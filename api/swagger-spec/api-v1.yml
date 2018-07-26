@@ -1,0 +1,192 @@
+swagger: "2.0"
+info:
+  description: "Service to manage wallets."
+  version: 1.0.0
+  title: "Wallet service"
+  contact:
+    email: dhontecillas@gmail.com
+host: "localhost:8080"
+basePath: "/v1"
+schemes:
+- "http"
+- "https"
+paths:
+  /wallets/:
+    get:
+      summary: "List wallets available."
+      description: "List all wallets the user has access to."
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "Lists of wallets."
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Wallet"
+        403:
+          description: "No valid user id provided."
+          schema:
+            $ref: "#/definitions/ErrorDesc"
+    post:
+      summary: "Create a new wallet."
+      description: "Requests the creation of a new wallet for the user."
+      produces:
+      - "application/json"
+      responses:
+        201:
+          description: "New wallet created"
+          schema:
+            $ref: "#/definitions/Wallet"
+        403:
+          description: "No valid user provided, or user cannot create more wallets"
+          schema:
+            $ref: "#/definitions/ErrorDesc"
+  /wallets/{wallet_id}/:
+    get:
+      summary: "Get info about a wallet"
+      description: "The wallet contains the current balance."
+      parameters:
+      - in: "path"
+        name: "wallet_id"
+        description: "Wallet ID"
+        required: true
+        type: "string"
+        format: "uuid"
+      responses:
+        200:
+          description: "Information of the wallet"
+          schema:
+            $ref: "#/definitions/Wallet"
+        403:
+          description: "No valid user provided, or user does not have access to this wallet"
+          schema:
+            $ref: "#/definitions/ErrorDesc"
+    put:
+      summary: "Transfer money from a wallet to another one"
+      parameters:
+      - in: "path"
+        name: "wallet_id"
+        description: "Wallet ID"
+        required: true
+        type: "string"
+        format: "uuid"
+      - in: "body"
+        name: "transfer_order"
+        description: "Transfer information"
+        required: true
+        schema:
+          $ref: "#/definitions/TransferOrder"
+      responses:
+        201:
+          description: "Transaction was completed successfully."
+          schema:
+            $ref: "#/definitions/Transfer"
+        403:
+          description: "No valid user provided, or user does not have access to source wallet"
+          schema:
+            $ref: "#/definitions/ErrorDesc"
+        404:
+          description: "Destination wallet not found"
+          schema:
+            $ref: "#/definitions/ErrorDesc"
+        409:
+          description: "Source wallet has not enough money, wallet is blocked, or operation can not be completed"
+          schema:
+            $ref: "#/definitions/ErrorDesc"
+    delete:
+      summary: "Transfer money from a wallet to another one"
+      parameters:
+      - in: "path"
+        name: "wallet_id"
+        description: "Wallet ID"
+        required: true
+        type: "string"
+        format: "uuid"
+      responses:
+        200:
+          description: "Wallet was deleted."
+        403:
+          description: "No valid user provided, or user does not have access to source wallet"
+          schema:
+            $ref: "#/definitions/ErrorDesc"
+        409:
+          description: "Wallet is not empty."
+          schema:
+            $ref: "#/definitions/ErrorDesc"
+definitions:
+  Wallet:
+    type: "object"
+    properties:
+      id:
+        type: "string"
+        format: "uuid"
+      owner:
+        type: "string"
+        format: "uuid"
+      balance:
+        type: "number"
+        format: "float"
+      currency:
+        type: "string"
+        enum:
+        - "eur"
+        - "usd"
+        - "gbp"
+  TransferOrder:
+    type: "object"
+    properties:
+      from_wallet:
+        description: "Identifier for the source wallet"
+        type: "string"
+        format: "uuid"
+      amount:
+        description: "Amount of money to transfer"
+        type: "string"
+        format: "float"
+      currency:
+        description: "Currency of the amount of money"
+        type: "string"
+        enum:
+        - "eur"
+        - "usd"
+        - "gbp"
+  Transfer:
+    type: "object"
+    properties:
+      id:
+        description: "Identifier for the transaction."
+        type: "string"
+        format: "uuid"
+      from_wallet:
+        description: "Identifier for the source wallet."
+        type: "string"
+        format: "uuid"
+      to_wallet:
+        description: "Identifier for the destination wallet."
+        type: "string"
+        format: "uuid"
+      amount:
+        description: "Amount of money to transfer."
+        type: "string"
+        format: "float"
+      currency:
+        description: "Currency for the amount of money."
+        type: "string"
+        enum:
+        - "eur"
+        - "usd"
+        - "gbp"
+      completed:
+        description: "UTC timestamp with time of the completed transaction"
+        type: "number"
+        format: "float"
+  ErrorDesc:
+    type: "object"
+    properties:
+      code:
+        description: "Error code for machine consumption"
+        type: "string"
+      message:
+        description: "Error code for user consumption"
+        type: "string"
