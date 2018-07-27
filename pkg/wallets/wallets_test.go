@@ -30,4 +30,11 @@ func TestWalletCreation(t *testing.T) {
 	        t.Errorf("User should not be able to create more than a wallet")
 	    }
 	*/
+
+	/*
+		if _, err = ms.SaveWallet(&w0); err == nil {
+			t.Errorf("Should not be able to save another wallet for the same user")
+			return
+		}
+	*/
 }

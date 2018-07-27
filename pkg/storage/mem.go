@@ -8,13 +8,14 @@ import (
 type MemStorage struct {
 	wallets       map[string]*wallets.Wallet
 	transfersFrom map[string]*wallets.Transfer
-	transfersTo   map[string]*wallets.Transfer
+	walletIds     int64
+	transferIds   int64
 }
 
 func NewMemStorage() *MemStorage {
 	ms := MemStorage{map[string]*wallets.Wallet{},
 		map[string]*wallets.Transfer{},
-		map[string]*wallets.Transfer{}}
+		1, 1}
 	return &ms
 }
 
@@ -24,21 +25,19 @@ func (ms *MemStorage) SaveWallet(inW *wallets.Wallet) (*wallets.Wallet, error) {
 	}
 	var existing *wallets.Wallet
 	var ok bool
-	if existing, ok = ms.wallets[inW.Owner]; ok && existing.Id != inW.Id {
-		return nil, errors.New("Only one wallet per user allowed")
-	}
 	w := *inW
-	if existing == nil {
-		w.Id = string(len(ms.wallets))
-	} else {
+	if existing, ok = ms.wallets[inW.Id]; ok {
 		w.Id = existing.Id
+	} else {
+		w.Id = string(ms.walletIds)
+		ms.walletIds += 1
 	}
-	ms.wallets[w.Owner] = &w
+	ms.wallets[w.Id] = &w
 	return &w, nil
 }
 
 func (ms *MemStorage) ListWallets(owner string) ([]*wallets.Wallet, error) {
-	var wallets = make([]*wallets.Wallet, 1)
+	var wallets = make([]*wallets.Wallet, 0)
 	for _, w := range ms.wallets {
 		if w.Owner == owner {
 			wallets = append(wallets, w)
@@ -48,18 +47,25 @@ func (ms *MemStorage) ListWallets(owner string) ([]*wallets.Wallet, error) {
 }
 
 func (ms *MemStorage) FetchWallet(walletId string) (*wallets.Wallet, error) {
-	for _, w := range ms.wallets {
-		if w.Id == walletId {
-			return w, nil
-		}
+	w, ok := ms.wallets[walletId]
+	if !ok {
+		return nil, nil
 	}
-	return nil, nil
+	return w, nil
 }
 
 func (ms *MemStorage) DeleteWallet(walletId string) error {
-	return errors.New("Not implemented")
+	if w, _ := ms.FetchWallet(walletId); w == nil {
+		return errors.New("Not found")
+	}
+	delete(ms.wallets, walletId)
+	return nil
 }
 
-func (ms *MemStorage) SaveTransfer(t *wallets.Transfer) (*wallets.Transfer, error) {
-	return nil, errors.New("Not implemented")
+func (ms *MemStorage) SaveTransfer(inT *wallets.Transfer) (*wallets.Transfer, error) {
+	t := *inT
+	t.Id = string(ms.transferIds)
+	ms.transferIds += 1
+	ms.transfersFrom[t.From] = &t
+	return &t, nil
 }
