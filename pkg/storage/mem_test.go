@@ -17,7 +17,7 @@ func TestMemoryWalletStorage(t *testing.T) {
 		t.Errorf("Should no save wallet without owner")
 	}
 
-	w0 := wallets.Wallet{Id: "", Owner: userA, Currency: "eur", Balance: 0}
+	w0 := wallets.Wallet{Id: "", Owner: userA, Balance: 0}
 	var dbW0 *wallets.Wallet
 	if dbW0, err = ms.SaveWallet(&w0); err != nil {
 		t.Errorf("Can not save valid wallet w0")
@@ -31,7 +31,6 @@ func TestMemoryWalletStorage(t *testing.T) {
 	var dbW1 *wallets.Wallet
 	w0 = *dbW0
 	w0.Balance = 1.0
-	w0.Currency = "usd"
 	if dbW1, err = ms.SaveWallet(&w0); err != nil {
 		t.Errorf("Must be able to update an existing wallet for the user")
 		return
