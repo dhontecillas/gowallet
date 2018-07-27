@@ -18,22 +18,31 @@ type Transfer struct {
 
 // Repository tha stores information about wallets and transfers
 type WalletStorage interface {
-	NewWallet(owner string) (*Wallet, error)
-	ListWallets(owner string) ([]Wallet, error)
+	SaveWallet(wallet *Wallet) (*Wallet, error)
+	ListWallets(owner string) ([]*Wallet, error)
 	FetchWallet(walletId string) (*Wallet, error)
 	DeleteWallet(walletId string) error
 	SaveTransfer(t *Transfer) (*Transfer, error)
 }
 
-type WalletService struct {
+type WalletService interface {
+	Transfer(from *Wallet, to *Wallet, currency *string, amount float64) (*Transfer, error)
+	NewWallet(owner *string) (*Wallet, error)
+}
+
+type walletService struct {
 	storage WalletStorage
 }
 
-func NewWalletService(ws WalletStorage) *WalletService {
-    var wservice = WalletService{ws}
-    return &wservice
+func NewWalletService(ws WalletStorage) WalletService {
+	w := walletService{storage: ws}
+	return w
 }
 
-func (ws *WalletService) Transfer(from *Wallet, to *Wallet, currency *string, amount float64) {
+func (ws walletService) Transfer(from *Wallet, to *Wallet, currency *string, amount float64) (*Transfer, error) {
+	return nil, nil
+}
 
+func (ws walletService) NewWallet(owner *string) (*Wallet, error) {
+	return nil, nil
 }
