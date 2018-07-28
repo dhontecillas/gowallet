@@ -3,6 +3,7 @@ package storage
 import (
 	"bitbucket.org/dhontecillas/gowallet/pkg/wallets"
 	"errors"
+	"strconv"
 )
 
 type Transactional interface {
@@ -40,7 +41,7 @@ func (ms *MemStorage) SaveWallet(inW *wallets.Wallet) (*wallets.Wallet, error) {
 	if existing, ok = ms.wallets[inW.Id]; ok {
 		w.Id = existing.Id
 	} else {
-		w.Id = string(ms.walletIds)
+		w.Id = strconv.FormatInt(ms.walletIds, 10)
 		ms.walletIds += 1
 	}
 	ms.wallets[w.Id] = &w
@@ -60,7 +61,7 @@ func (ms *MemStorage) ListWallets(owner string) ([]*wallets.Wallet, error) {
 func (ms *MemStorage) FetchWallet(walletId string) (*wallets.Wallet, error) {
 	w, ok := ms.wallets[walletId]
 	if !ok {
-		return nil, nil
+		return nil, errors.New("Not found")
 	}
 	return w, nil
 }
@@ -75,7 +76,7 @@ func (ms *MemStorage) DeleteWallet(walletId string) error {
 
 func (ms *MemStorage) SaveTransfer(inT *wallets.Transfer) (*wallets.Transfer, error) {
 	t := *inT
-	t.Id = string(ms.transferIds)
+	t.Id = strconv.FormatInt(ms.transferIds, 10)
 	ms.transferIds += 1
 	ms.transfersFrom[t.From] = &t
 	return &t, nil

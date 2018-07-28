@@ -88,17 +88,53 @@ func createWallet(w http.ResponseWriter, r *http.Request, userId string) error {
 }
 
 func walletInfo(w http.ResponseWriter, r *http.Request, userId string, walletId string) error {
-	writeError(w, 200, "OK", "Wallet Info")
+	var err error
+	var userW *wallets.Wallet
+	ws := wallets.NewWalletService(serviceStorage)
+	if userW, err = ws.Info(userId, walletId); err != nil {
+		writeError(w, 400, "CANT_GET_INFO", err.Error())
+		return err
+	}
+	je := enc.EncodeWallet(userW)
+	json.NewEncoder(w).Encode(je)
 	return nil
 }
 
 func deleteWallet(w http.ResponseWriter, r *http.Request, userId string, walletId string) error {
-	writeError(w, 200, "OK", "Delete wallet")
+	ws := wallets.NewWalletService(serviceStorage)
+	if err := ws.Delete(userId, walletId); err != nil {
+		writeError(w, 400, "CANT_GET_INFO", err.Error())
+		return err
+	}
 	return nil
 }
 
 func transferMoney(w http.ResponseWriter, r *http.Request, userId string, walletId string) error {
-	writeError(w, 200, "OK", "Transfer money")
+	/* if no source, we allow to load money from nothing */
+	var err error
+	var to enc.JTransferOrder
+	if err = json.NewDecoder(r.Body).Decode(&to); err != nil {
+		writeError(w, 400, "BAD_FORMAT", err.Error())
+		return err
+	}
+	ws := wallets.NewWalletService(serviceStorage)
+	if to.From == "" {
+		// This is kind of a hack in order to load money, we should
+		// be using a different endpoint for "import" / "export"
+		// money (it is not reflected in the swagger api spec)
+		if _, err = ws.Load(walletId, to.Amount); err != nil {
+			writeError(w, 400, "CANT_LOAD_MONEY", err.Error())
+		} else {
+			w.WriteHeader(200)
+		}
+	} else {
+		var t *wallets.Transfer
+		if t, err = ws.Transfer(userId, t.From, walletId, t.Amount); err != nil {
+			writeError(w, 400, "CANT_LOAD_MONEY", err.Error())
+		}
+		jt := enc.EncodeTransfer(t)
+		json.NewEncoder(w).Encode(jt)
+	}
 	return nil
 }
 

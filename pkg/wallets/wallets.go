@@ -30,7 +30,9 @@ type WalletStorage interface {
 
 type WalletService interface {
 	List(owner string) ([]*Wallet, error)
-	Transfer(from string, to string, amount float64) (*Transfer, error)
+	Info(owner string, walletId string) (*Wallet, error)
+	Delete(owner string, walletId string) error
+	Transfer(owner string, from string, to string, amount float64) (*Transfer, error)
 	NewWallet(owner string) (*Wallet, error)
 	Load(to string, amount float64) (*Wallet, error)
 }
@@ -49,7 +51,34 @@ func (ws walletService) List(owner string) ([]*Wallet, error) {
 	return s.ListWallets(owner)
 }
 
-func (ws walletService) Transfer(from string, to string, amount float64) (*Transfer, error) {
+func (ws walletService) Info(owner string, walletId string) (*Wallet, error) {
+	var err error
+	var w *Wallet
+	s := ws.storage
+	if w, err = s.FetchWallet(walletId); err != nil {
+		return nil, err
+	}
+	if w.Owner != owner {
+		return nil, errors.New("Not owned")
+	}
+	return w, nil
+}
+
+func (ws walletService) Delete(owner string, walletId string) error {
+	var err error
+	var w *Wallet
+	s := ws.storage
+	if w, err = s.FetchWallet(walletId); err != nil {
+		return err
+	}
+	if w.Owner != owner {
+		return errors.New("Not owned")
+	}
+	// TODO: we can add a check that the wallet is empty
+	return s.DeleteWallet(walletId)
+}
+
+func (ws walletService) Transfer(owner string, from string, to string, amount float64) (*Transfer, error) {
 	s := ws.storage
 	var wFrom, wTo *Wallet
 	var err error
