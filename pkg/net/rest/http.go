@@ -13,13 +13,6 @@ import (
 var serviceAuth AuthService
 var serviceStorage storage.TransactionalStorage
 
-func writeError(w http.ResponseWriter, httpCode int, code string, message string) error {
-	je := enc.JErrorDesc{code, message}
-	w.WriteHeader(httpCode)
-	json.NewEncoder(w).Encode(je)
-	return errors.New(code)
-}
-
 func extractBearerToken(r *http.Request) (string, error) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
@@ -38,27 +31,13 @@ func authRequest(w http.ResponseWriter, r *http.Request) (string, error) {
 	var userId string
 	var bearerT string
 	if bearerT, err = extractBearerToken(r); err != nil {
-		writeError(w, 403, "FORBIDDEN", "Can not authorize user")
-		return "", err
+		return "", mapError(w, errors.New(ErrForbidden))
 	}
 	if userId, err = serviceAuth.AuthorizeUser(bearerT); err != nil {
 		writeError(w, 403, "FORBIDDEN", "Can not authorize user")
-		return "", err
+		return "", mapError(w, errors.New(ErrForbidden))
 	}
 	return userId, nil
-}
-
-// TODO: Check if already exists an Auth interface
-type AuthService interface {
-	// authorizeUser returns a user id from an authToken
-	AuthorizeUser(authToken string) (string, error)
-}
-
-type AllowAllAuthService struct {
-}
-
-func (aas *AllowAllAuthService) AuthorizeUser(authToken string) (string, error) {
-	return authToken, nil
 }
 
 func listWallets(w http.ResponseWriter, r *http.Request, userId string) error {
@@ -66,8 +45,7 @@ func listWallets(w http.ResponseWriter, r *http.Request, userId string) error {
 	var userWallets []*wallets.Wallet
 	ws := wallets.NewWalletService(serviceStorage)
 	if userWallets, err = ws.List(userId); err != nil {
-		writeError(w, 400, "OK", "List wallets")
-		return err
+		return mapError(w, err)
 	}
 	je := enc.EncodeWalletList(userWallets)
 	json.NewEncoder(w).Encode(je)
@@ -79,8 +57,7 @@ func createWallet(w http.ResponseWriter, r *http.Request, userId string) error {
 	var userW *wallets.Wallet
 	ws := wallets.NewWalletService(serviceStorage)
 	if userW, err = ws.NewWallet(userId); err != nil {
-		writeError(w, 400, "CANT_CREATE", err.Error())
-		return err
+		return mapError(w, err)
 	}
 	je := enc.EncodeWallet(userW)
 	json.NewEncoder(w).Encode(je)
@@ -92,8 +69,7 @@ func walletInfo(w http.ResponseWriter, r *http.Request, userId string, walletId 
 	var userW *wallets.Wallet
 	ws := wallets.NewWalletService(serviceStorage)
 	if userW, err = ws.Info(userId, walletId); err != nil {
-		writeError(w, 400, "CANT_GET_INFO", err.Error())
-		return err
+		return mapError(w, err)
 	}
 	je := enc.EncodeWallet(userW)
 	json.NewEncoder(w).Encode(je)
@@ -103,8 +79,7 @@ func walletInfo(w http.ResponseWriter, r *http.Request, userId string, walletId 
 func deleteWallet(w http.ResponseWriter, r *http.Request, userId string, walletId string) error {
 	ws := wallets.NewWalletService(serviceStorage)
 	if err := ws.Delete(userId, walletId); err != nil {
-		writeError(w, 400, "CANT_GET_INFO", err.Error())
-		return err
+		return mapError(w, err)
 	}
 	return nil
 }
@@ -114,8 +89,7 @@ func transferMoney(w http.ResponseWriter, r *http.Request, userId string, wallet
 	var err error
 	var to enc.JTransferOrder
 	if err = json.NewDecoder(r.Body).Decode(&to); err != nil {
-		writeError(w, 400, "BAD_FORMAT", err.Error())
-		return err
+		return mapError(w, err)
 	}
 	ws := wallets.NewWalletService(serviceStorage)
 	if to.From == "" {
@@ -123,18 +97,17 @@ func transferMoney(w http.ResponseWriter, r *http.Request, userId string, wallet
 		// be using a different endpoint for "import" / "export"
 		// money (it is not reflected in the swagger api spec)
 		if _, err = ws.Load(walletId, to.Amount); err != nil {
-			writeError(w, 400, "CANT_LOAD_MONEY", err.Error())
-		} else {
-			w.WriteHeader(200)
+			return mapError(w, err)
 		}
-	} else {
-		var t *wallets.Transfer
-		if t, err = ws.Transfer(userId, t.From, walletId, t.Amount); err != nil {
-			writeError(w, 400, "CANT_LOAD_MONEY", err.Error())
-		}
-		jt := enc.EncodeTransfer(t)
-		json.NewEncoder(w).Encode(jt)
+		w.WriteHeader(200)
+		return nil
 	}
+	var t *wallets.Transfer
+	if t, err = ws.Transfer(userId, t.From, walletId, t.Amount); err != nil {
+		return mapError(w, err)
+	}
+	jt := enc.EncodeTransfer(t)
+	json.NewEncoder(w).Encode(jt)
 	return nil
 }
 
@@ -146,7 +119,7 @@ func allWalletsEndpoint(w http.ResponseWriter, r *http.Request, userId string) e
 	case "POST":
 		err = createWallet(w, r, userId)
 	default:
-		err = writeError(w, 405, "CANT_DO_THAT", "Method not allowed")
+		err = mapError(w, errors.New(ErrInvalidMethod))
 	}
 	return err
 }
@@ -161,7 +134,7 @@ func singleWalletEndpoint(w http.ResponseWriter, r *http.Request, userId string,
 	case "DELETE":
 		err = deleteWallet(w, r, userId, walletId)
 	default:
-		err = writeError(w, 405, "CANT_DO_THAT", "Method not allowed")
+		err = mapError(w, errors.New(ErrInvalidMethod))
 	}
 	return err
 }
