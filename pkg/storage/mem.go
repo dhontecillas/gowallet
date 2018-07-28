@@ -5,6 +5,17 @@ import (
 	"errors"
 )
 
+type Transactional interface {
+	Begin()
+	Commit()
+	Rollback()
+}
+
+type TransactionalStorage interface {
+	Transactional
+	wallets.WalletStorage
+}
+
 type MemStorage struct {
 	wallets       map[string]*wallets.Wallet
 	transfersFrom map[string]*wallets.Transfer
@@ -68,4 +79,18 @@ func (ms *MemStorage) SaveTransfer(inT *wallets.Transfer) (*wallets.Transfer, er
 	ms.transferIds += 1
 	ms.transfersFrom[t.From] = &t
 	return &t, nil
+}
+
+func (ms *MemStorage) Begin() {
+	// TODO: Acquire a mutex to allow concurrent access to this
+}
+
+func (ms *MemStorage) Commit() {
+	// TODO: Release the mutex to allow concurrent access to this
+}
+
+func (ms *MemStorage) Rollback() {
+	// OK, this MemStorage is not really transactional.
+	// Too hard to implement, but a DB backed storage
+	// would be able to rollback
 }

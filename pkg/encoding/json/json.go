@@ -1,13 +1,14 @@
 package json
 
 import (
-// "encoding/json"
+	// "encoding/json"
+	"bitbucket.org/dhontecillas/gowallet/pkg/wallets"
 )
 
 type JWallet struct {
-	Id      string `json:"id"`
-	Owner   string `json:"owner"`
-	Balance string `json:"balance"`
+	Id      string  `json:"id"`
+	Owner   string  `json:"owner"`
+	Balance float64 `json:"balance"`
 }
 
 type JTransferOrder struct {
@@ -26,4 +27,21 @@ type JTransfer struct {
 type JErrorDesc struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
+}
+
+type JWalletList struct {
+	Wallets []*JWallet `json:"wallets"`
+}
+
+func EncodeWallet(inW *wallets.Wallet) *JWallet {
+	jw := JWallet{inW.Id, inW.Owner, inW.Balance}
+	return &jw
+}
+
+func EncodeWalletList(inWL []*wallets.Wallet) *JWalletList {
+	jwl := JWalletList{make([]*JWallet, len(inWL))}
+	for idx, w := range inWL {
+		jwl.Wallets[idx] = EncodeWallet(w)
+	}
+	return &jwl
 }

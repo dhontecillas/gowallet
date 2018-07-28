@@ -2,16 +2,22 @@ package rest
 
 import (
 	enc "bitbucket.org/dhontecillas/gowallet/pkg/encoding/json"
+	"bitbucket.org/dhontecillas/gowallet/pkg/storage"
+	"bitbucket.org/dhontecillas/gowallet/pkg/wallets"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
 )
 
-func writeError(w http.ResponseWriter, httpCode int, code string, message string) {
+var serviceAuth AuthService
+var serviceStorage storage.TransactionalStorage
+
+func writeError(w http.ResponseWriter, httpCode int, code string, message string) error {
 	je := enc.JErrorDesc{code, message}
 	w.WriteHeader(httpCode)
 	json.NewEncoder(w).Encode(je)
+	return errors.New(code)
 }
 
 func extractBearerToken(r *http.Request) (string, error) {
@@ -35,7 +41,7 @@ func authRequest(w http.ResponseWriter, r *http.Request) (string, error) {
 		writeError(w, 403, "FORBIDDEN", "Can not authorize user")
 		return "", err
 	}
-	if userId, err = authS.AuthorizeUser(bearerT); err != nil {
+	if userId, err = serviceAuth.AuthorizeUser(bearerT); err != nil {
 		writeError(w, 403, "FORBIDDEN", "Can not authorize user")
 		return "", err
 	}
@@ -55,50 +61,73 @@ func (aas *AllowAllAuthService) AuthorizeUser(authToken string) (string, error) 
 	return authToken, nil
 }
 
-var authS AuthService
-
-func listWallets(w http.ResponseWriter, r *http.Request, userId string) {
-	writeError(w, 200, "OK", "List wallets")
+func listWallets(w http.ResponseWriter, r *http.Request, userId string) error {
+	var err error
+	var userWallets []*wallets.Wallet
+	ws := wallets.NewWalletService(serviceStorage)
+	if userWallets, err = ws.List(userId); err != nil {
+		writeError(w, 400, "OK", "List wallets")
+		return err
+	}
+	je := enc.EncodeWalletList(userWallets)
+	json.NewEncoder(w).Encode(je)
+	return err
 }
 
-func createWallet(w http.ResponseWriter, r *http.Request, userId string) {
-	writeError(w, 200, "OK", "Create Wallet")
+func createWallet(w http.ResponseWriter, r *http.Request, userId string) error {
+	var err error
+	var userW *wallets.Wallet
+	ws := wallets.NewWalletService(serviceStorage)
+	if userW, err = ws.NewWallet(userId); err != nil {
+		writeError(w, 400, "CANT_CREATE", err.Error())
+		return err
+	}
+	je := enc.EncodeWallet(userW)
+	json.NewEncoder(w).Encode(je)
+	return nil
 }
 
-func walletInfo(w http.ResponseWriter, r *http.Request, userId string, walletId string) {
+func walletInfo(w http.ResponseWriter, r *http.Request, userId string, walletId string) error {
 	writeError(w, 200, "OK", "Wallet Info")
+	return nil
 }
 
-func deleteWallet(w http.ResponseWriter, r *http.Request, userId string, walletId string) {
+func deleteWallet(w http.ResponseWriter, r *http.Request, userId string, walletId string) error {
 	writeError(w, 200, "OK", "Delete wallet")
+	return nil
 }
 
-func transferMoney(w http.ResponseWriter, r *http.Request, userId string, walletId string) {
+func transferMoney(w http.ResponseWriter, r *http.Request, userId string, walletId string) error {
 	writeError(w, 200, "OK", "Transfer money")
+	return nil
 }
 
-func allWalletsEndpoint(w http.ResponseWriter, r *http.Request, userId string) {
+func allWalletsEndpoint(w http.ResponseWriter, r *http.Request, userId string) error {
+	var err error
 	switch r.Method {
 	case "GET":
-		listWallets(w, r, userId)
+		err = listWallets(w, r, userId)
 	case "POST":
-		createWallet(w, r, userId)
+		err = createWallet(w, r, userId)
 	default:
-		writeError(w, 405, "CANT_DO_THAT", "Method not allowed")
+		err = writeError(w, 405, "CANT_DO_THAT", "Method not allowed")
 	}
+	return err
 }
 
-func singleWalletEndpoint(w http.ResponseWriter, r *http.Request, userId string, walletId string) {
+func singleWalletEndpoint(w http.ResponseWriter, r *http.Request, userId string, walletId string) error {
+	var err error
 	switch r.Method {
 	case "GET":
-		walletInfo(w, r, userId, walletId)
+		err = walletInfo(w, r, userId, walletId)
 	case "PUT":
-		transferMoney(w, r, userId, walletId)
+		err = transferMoney(w, r, userId, walletId)
 	case "DELETE":
-		deleteWallet(w, r, userId, walletId)
+		err = deleteWallet(w, r, userId, walletId)
 	default:
-		writeError(w, 405, "CANT_DO_THAT", "Method not allowed")
+		err = writeError(w, 405, "CANT_DO_THAT", "Method not allowed")
 	}
+	return err
 }
 
 func extractWalletId(r *http.Request) string {
@@ -117,14 +146,23 @@ func WalletsEndpoint(w http.ResponseWriter, r *http.Request) {
 	if userId, err = authRequest(w, r); err != nil {
 		return
 	}
+
+	serviceStorage.Begin()
 	if wId := extractWalletId(r); wId != "" {
-		singleWalletEndpoint(w, r, userId, wId)
+		err = singleWalletEndpoint(w, r, userId, wId)
 	} else {
-		allWalletsEndpoint(w, r, userId)
+		err = allWalletsEndpoint(w, r, userId)
+	}
+
+	if err != nil {
+		serviceStorage.Rollback()
+	} else {
+		serviceStorage.Commit()
 	}
 }
 
-func NewServer(auth AuthService) {
-	authS = auth
+func NewServer(auth AuthService, storage storage.TransactionalStorage) {
+	serviceAuth = auth
+	serviceStorage = storage
 	http.HandleFunc("/v1/wallets/", WalletsEndpoint)
 }

@@ -33,9 +33,7 @@ paths:
         200:
           description: "Lists of wallets."
           schema:
-            type: "array"
-            items:
-              $ref: "#/definitions/Wallet"
+            $ref: "#/definitions/WalletList"
         403:
           description: "No valid user id provided."
           schema:
@@ -161,6 +159,13 @@ definitions:
       balance:
         type: "number"
         format: "float"
+  WalletList:
+    type: "object"
+    properties:
+      wallets:
+        type: array 
+        items:
+          $ref: "#/definitions/Wallet"
   TransferOrder:
     type: "object"
     properties:
