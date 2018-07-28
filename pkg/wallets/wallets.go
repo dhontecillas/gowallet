@@ -56,10 +56,10 @@ func (ws walletService) Info(owner string, walletId string) (*Wallet, error) {
 	var w *Wallet
 	s := ws.storage
 	if w, err = s.FetchWallet(walletId); err != nil {
-		return nil, err
+		return nil, &WErr{ErrStorageFailed, err.Error()}
 	}
 	if w.Owner != owner {
-		return nil, errors.New("Not owned")
+		return nil, &WErr{ErrNotAllowed, ""}
 	}
 	return w, nil
 }
@@ -82,19 +82,23 @@ func (ws walletService) Transfer(owner string, from string, to string, amount fl
 	s := ws.storage
 	var wFrom, wTo *Wallet
 	var err error
-	if wFrom, err = s.FetchWallet(from); wFrom != nil {
+	if amount <= 0 {
+		return nil, &WErr{ErrInvalidAmount, ""}
 	}
-	if wTo, err = s.FetchWallet(to); wTo != nil {
-
+	if wFrom, err = s.FetchWallet(from); wFrom == nil {
+		return nil, &WErr{ErrWalletNotFound, from}
+	}
+	if wTo, err = s.FetchWallet(to); wTo == nil {
+		return nil, &WErr{ErrWalletNotFound, to}
 	}
 	if wFrom.Balance < amount {
-		return nil, errors.New("Not enough money in source wallet")
+		return nil, &WErr{ErrNotEnoughMoney, ""}
 	}
 	wFrom.Balance -= amount
 	wTo.Balance += amount
 	t := Transfer{From: from, To: to, Amount: amount, Completed: time.Now().Unix()}
 	if _, err = s.SaveWallet(wFrom); err != nil {
-		return nil, err
+		return nil, &WErr{ErrStorageFailed, err.Error()}
 	}
 	if _, err = s.SaveWallet(wTo); err != nil {
 		return nil, err
@@ -115,11 +119,11 @@ func (ws walletService) Load(to string, amount float64) (*Wallet, error) {
 		return nil, err
 	}
 	if amount <= 0 {
-		return nil, errors.New("Amount must be positive")
+		return nil, &WErr{ErrInvalidAmount, ""}
 	}
 	w.Balance += amount
 	if w, err = s.SaveWallet(w); err != nil {
-		return nil, err
+		return nil, &WErr{ErrStorageFailed, err.Error()}
 	}
 	return w, nil
 }
@@ -129,15 +133,15 @@ func (ws walletService) NewWallet(owner string) (*Wallet, error) {
 	var l []*Wallet
 	var err error
 	if l, err = s.ListWallets(owner); err != nil {
-		return nil, err
+		return nil, &WErr{ErrStorageFailed, err.Error()}
 	}
 	if len(l) >= 1 {
-		return nil, errors.New("Only one wallet per user allowed")
+		return nil, &WErr{ErrMaxWallets, "Only one wallet per user allowed"}
 	}
 	w := Wallet{Owner: owner, Balance: 0}
 	var dbW *Wallet
 	if dbW, err = s.SaveWallet(&w); err != nil {
-		return nil, err
+		return nil, &WErr{ErrStorageFailed, err.Error()}
 	}
 	return dbW, nil
 }
