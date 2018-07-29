@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"bitbucket.org/dhontecillas/gowallet/pkg/wallets"
+	"github.com/dhontecillas/gowallet/pkg/wallets"
 	"errors"
 	"strconv"
 )

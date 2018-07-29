@@ -2,7 +2,7 @@ package json
 
 import (
 	// "encoding/json"
-	"bitbucket.org/dhontecillas/gowallet/pkg/wallets"
+	"github.com/dhontecillas/gowallet/pkg/wallets"
 )
 
 type JWallet struct {

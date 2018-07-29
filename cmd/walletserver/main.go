@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bitbucket.org/dhontecillas/gowallet/pkg/net/rest"
-	"bitbucket.org/dhontecillas/gowallet/pkg/storage"
+	"github.com/dhontecillas/gowallet/pkg/net/rest"
+	"github.com/dhontecillas/gowallet/pkg/storage"
 	"log"
 	"net/http"
 )

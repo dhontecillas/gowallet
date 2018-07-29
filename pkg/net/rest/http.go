@@ -1,9 +1,9 @@
 package rest
 
 import (
-	enc "bitbucket.org/dhontecillas/gowallet/pkg/encoding/json"
-	"bitbucket.org/dhontecillas/gowallet/pkg/storage"
-	"bitbucket.org/dhontecillas/gowallet/pkg/wallets"
+	enc "github.com/dhontecillas/gowallet/pkg/encoding/json"
+	"github.com/dhontecillas/gowallet/pkg/storage"
+	"github.com/dhontecillas/gowallet/pkg/wallets"
 	"encoding/json"
 	"errors"
 	"net/http"

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 	"encoding/json"
-	enc "bitbucket.org/dhontecillas/gowallet/pkg/encoding/json"
-	"bitbucket.org/dhontecillas/gowallet/pkg/wallets"
+	enc "github.com/dhontecillas/gowallet/pkg/encoding/json"
+	"github.com/dhontecillas/gowallet/pkg/wallets"
 )
 
 const (

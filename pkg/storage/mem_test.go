@@ -1,8 +1,8 @@
 package storage_test
 
 import (
-	. "bitbucket.org/dhontecillas/gowallet/pkg/storage"
-	"bitbucket.org/dhontecillas/gowallet/pkg/wallets"
+	. "github.com/dhontecillas/gowallet/pkg/storage"
+	"github.com/dhontecillas/gowallet/pkg/wallets"
 	"testing"
 )
 
